@@ -136,7 +136,7 @@ const deleteAccountSchema = z.object({
 });
 
 const preferencesSchema = z.object({
-  preferences: z.record(z.unknown()),
+  preferences: z.record(z.string(), z.unknown()),
 });
 
 const friendRequestSchema = z.object({
@@ -151,7 +151,7 @@ const friendRespondSchema = z.object({
 const replayShareSchema = z.object({
   mode: modeSchema,
   title: z.string().trim().min(2).max(80),
-  replay: z.record(z.unknown()),
+  replay: z.record(z.string(), z.unknown()),
   isPublic: z.boolean().default(true),
 });
 

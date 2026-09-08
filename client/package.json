@@ -16,18 +16,19 @@
     "prepreview:worker": "npm run clean:worker",
     "preview:worker": "opennextjs-cloudflare build --config wrangler.jsonc && wrangler dev --config wrangler.jsonc",
     "start": "next start",
-    "test": "tsx --test src/**/*.test.ts && tsc -p tsconfig.json --noEmit",
+    "test": "node --require ../scripts/register-geteuid.cjs --import tsx --test src/**/*.test.ts && tsc -p tsconfig.json --noEmit",
     "preview": "next start"
   },
   "dependencies": {
-    "next": "^15.0.0",
+    "next": "^16.3.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "typescript": "^5.9.3",
-    "@types/node": "^24.6.0"
+    "@types/node": "^24.6.0",
+    "tsx": "4.22.0",
+    "typescript": "^5.9.3"
   }
 }

@@ -163,6 +163,10 @@ function unavailable(message: string): never {
   throw new HttpError(503, message);
 }
 
+function badGateway(message: string): never {
+  throw new HttpError(502, message);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -952,15 +956,26 @@ function isWebhookTargetAllowed(targetUrl: string): boolean {
     if (url.protocol !== "https:") {
       return false;
     }
+    if (url.username || url.password) {
+      return false;
+    }
     const host = url.hostname.toLowerCase();
     if (
       host === "localhost" ||
+      host.endsWith(".localhost") ||
       host.endsWith(".local") ||
+      host.endsWith(".internal") ||
+      host.endsWith(".lan") ||
+      host.includes(":") ||
       host === "0.0.0.0" ||
       host.startsWith("127.") ||
       host.startsWith("10.") ||
+      host.startsWith("169.254.") ||
       host.startsWith("192.168.") ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host) ||
+      /^198\.(1[89])\./.test(host) ||
+      /^(22[4-9]|23\d|24\d|25[0-5])\./.test(host)
     ) {
       return false;
     }
@@ -972,6 +987,60 @@ function isWebhookTargetAllowed(targetUrl: string): boolean {
 
 function createWebhookSecret(): string {
   return randomPublicId(24);
+}
+
+async function signWebhookPayload(secret: string, body: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function deliverWebhookTest(webhook: { id: string; accountId: string; targetUrl: string; secret: string }): Promise<number> {
+  const eventName = "webhook.test";
+  const body = JSON.stringify({
+    event: eventName,
+    sentAt: new Date().toISOString(),
+    payload: {
+      webhookId: webhook.id,
+      accountId: webhook.accountId,
+      message: "TypeShift webhook test event",
+    },
+  });
+  const signature = await signWebhookPayload(webhook.secret, body);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(webhook.targetUrl, {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "Content-Type": "application/json",
+        "X-TypeShift-Event": eventName,
+        "X-TypeShift-Signature": signature,
+        "User-Agent": "TypeShift-Webhook/1.0",
+      },
+      body,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      badGateway(`Webhook target returned HTTP ${response.status}`);
+    }
+    return response.status;
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    badGateway("Webhook delivery failed");
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function createAccountSession(
@@ -3579,14 +3648,15 @@ async function testWebhookRoute(request: Request, ctx: RequestContext, webhookId
   }
   if (!ctx.env.DB) {
     const webhook = getMemoryState().webhooks.get(webhookId);
-    if (!webhook || webhook.accountId !== account.id) {
+    if (!webhook || webhook.accountId !== account.id || !webhook.active) {
       notFound("Webhook not found");
     }
-    return json({ ok: true });
+    const status = await deliverWebhookTest(webhook);
+    return json({ ok: true, status });
   }
-  const row = await dbFirst<{ id: string }>(
+  const row = await dbFirst<{ id: string; account_id: string; target_url: string; secret: string }>(
     ctx.env.DB,
-    `SELECT id
+    `SELECT id, account_id, target_url, secret
        FROM webhook_endpoints
       WHERE id = ?
         AND account_id = ?
@@ -3597,7 +3667,13 @@ async function testWebhookRoute(request: Request, ctx: RequestContext, webhookId
   if (!row) {
     notFound("Webhook not found");
   }
-  return json({ ok: true });
+  const status = await deliverWebhookTest({
+    id: row.id,
+    accountId: row.account_id,
+    targetUrl: row.target_url,
+    secret: row.secret,
+  });
+  return json({ ok: true, status });
 }
 
 async function handlePrivacyAnalytics(

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import { resetMemoryState } from "./memory-state";
 import { handleApiRequest } from "./api";
@@ -521,11 +522,40 @@ test("social routes support friends, duel queues, races, tournaments, and webhoo
   assert.equal(webhook.status, 201);
   assert.ok(webhook.body.secret);
 
-  const webhookTest = await requestJson<{ ok: true }>(`webhooks/test/${webhook.body.id}`, {
+  const unsafeWebhook = await requestJson<{ error: string }>("webhooks/register", {
     method: "POST",
     headers: { authorization: `Bearer ${alpha.body.token}` },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ targetUrl: "https://[::1]/hook", events: ["webhook.test"] }),
+  });
+  assert.equal(unsafeWebhook.status, 422);
+
+  const originalFetch = globalThis.fetch;
+  const deliveredWebhooks: Array<{ url: string; init: RequestInit }> = [];
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+    deliveredWebhooks.push({ url: String(input), init: init ?? {} });
+    return new Response(null, { status: 204 });
+  };
+  const webhookTest = await requestJson<{ ok: true }>(
+    `webhooks/test/${webhook.body.id}`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${alpha.body.token}` },
+      body: JSON.stringify({}),
+    },
+  ).finally(() => {
+    globalThis.fetch = originalFetch;
   });
   assert.equal(webhookTest.status, 200);
   assert.equal(webhookTest.body.ok, true);
+  const deliveredWebhook = deliveredWebhooks[0];
+  assert.ok(deliveredWebhook);
+  assert.equal(deliveredWebhook.url, "https://example.com/typeshift-hook");
+  const deliveryBody = String(deliveredWebhook.init.body ?? "");
+  const headers = new Headers(deliveredWebhook.init.headers);
+  assert.equal(headers.get("X-TypeShift-Event"), "webhook.test");
+  assert.equal(
+    headers.get("X-TypeShift-Signature"),
+    createHmac("sha256", webhook.body.secret).update(deliveryBody).digest("hex"),
+  );
+  assert.equal((JSON.parse(deliveryBody) as { event: string }).event, "webhook.test");
 });

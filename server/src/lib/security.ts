@@ -32,7 +32,7 @@ export function extractBearerToken(header?: string): string | null {
     return null;
   }
   const [scheme, token] = header.trim().split(/\s+/, 2);
-  if (scheme.toLowerCase() !== "bearer" || !token) {
+  if (scheme?.toLowerCase() !== "bearer" || !token) {
     return null;
   }
   return token;
@@ -169,8 +169,8 @@ export function isReasonableScore(payload: {
     avgKeyIntervalMs: number;
     burstKps: number;
     idleRatio: number;
-    timelineHash?: string;
-  };
+    timelineHash?: string | undefined;
+  } | undefined;
 }): boolean {
   if (payload.raw < payload.wpm) {
     return false;

@@ -71,7 +71,7 @@ export function renderPrometheusMetrics(): string {
   lines.push("# HELP typeshift_http_requests_total Total HTTP requests.");
   lines.push("# TYPE typeshift_http_requests_total counter");
   for (const [key, count] of requestCounts.entries()) {
-    const [method, route, status] = key.split("|");
+    const [method = "unknown", route = "unknown", status = "0"] = key.split("|");
     lines.push(
       `typeshift_http_requests_total{method="${quoteLabel(method)}",route="${quoteLabel(
         route,
@@ -82,7 +82,7 @@ export function renderPrometheusMetrics(): string {
   lines.push("# HELP typeshift_http_request_duration_ms Request duration summary in milliseconds.");
   lines.push("# TYPE typeshift_http_request_duration_ms summary");
   for (const [key, stats] of requestDurations.entries()) {
-    const [method, route] = key.split("|");
+    const [method = "unknown", route = "unknown"] = key.split("|");
     const avg = stats.count > 0 ? stats.totalMs / stats.count : 0;
     lines.push(
       `typeshift_http_request_duration_ms_count{method="${quoteLabel(
@@ -109,7 +109,7 @@ export function renderPrometheusMetrics(): string {
   lines.push("# HELP typeshift_http_request_duration_bucket Cumulative duration bucket count.");
   lines.push("# TYPE typeshift_http_request_duration_bucket counter");
   for (const [key, count] of durationBucketCounts.entries()) {
-    const [method, route, le] = key.split("|");
+    const [method = "unknown", route = "unknown", le = "+Inf"] = key.split("|");
     lines.push(
       `typeshift_http_request_duration_bucket{method="${quoteLabel(
         method,

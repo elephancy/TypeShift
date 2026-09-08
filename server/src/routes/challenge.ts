@@ -69,7 +69,7 @@ const seasonLeaderboardQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 
-function getRequestFingerprint(req: { ip?: string; get: (name: string) => string | undefined }) {
+function getRequestFingerprint(req: { ip?: string | undefined; get: (name: string) => string | undefined }) {
   const ip = req.ip ?? "0.0.0.0";
   const userAgent = req.get("user-agent") ?? "unknown";
   return {

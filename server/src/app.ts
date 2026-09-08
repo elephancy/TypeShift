@@ -17,6 +17,7 @@ import { recordHttpRequest, renderPrometheusMetrics } from "./lib/metrics.js";
 
 const mutationMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const allowedMethods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
+const createHttpLogger = pinoHttp as unknown as typeof import("pino-http").default;
 
 function rateLimitKey(req: Request): string {
   // Normalize IPv6 and forwarded IP handling the way express-rate-limit expects.
@@ -133,13 +134,17 @@ export function createApp(logger: pino.Logger) {
       return next();
     }
     const bodyRecord = req.body as Record<string, unknown>;
-    if ("__proto__" in bodyRecord || "prototype" in bodyRecord || "constructor" in bodyRecord) {
+    if (
+      Object.hasOwn(bodyRecord, "__proto__") ||
+      Object.hasOwn(bodyRecord, "prototype") ||
+      Object.hasOwn(bodyRecord, "constructor")
+    ) {
       return res.status(400).json({ error: "Invalid JSON payload" });
     }
     return next();
   });
   app.use(
-    pinoHttp({
+    createHttpLogger({
       logger,
       genReqId: (req) => {
         const requestId = req.headers["x-request-id"];
@@ -269,10 +274,14 @@ export function createApp(logger: pino.Logger) {
   });
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const syntaxErrorStatus =
+      error instanceof SyntaxError
+        ? (error as SyntaxError & { status?: unknown }).status
+        : undefined;
     if (
       error instanceof SyntaxError &&
-      typeof (error as { status?: unknown }).status === "number" &&
-      (error as { status: number }).status === 400
+      typeof syntaxErrorStatus === "number" &&
+      syntaxErrorStatus === 400
     ) {
       return res.status(400).json({ error: "Invalid JSON body" });
     }

@@ -3,6 +3,7 @@ import test from "node:test";
 import pino from "pino";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.js";
+import { config } from "../config.js";
 import { resetInMemoryDatabase } from "../db/inMemory.js";
 import { setDatabaseOnline } from "../db/state.js";
 import { resetPlatformMemoryState } from "./platform.js";
@@ -284,7 +285,13 @@ test("privacy analytics aggregates and summarizes events", async () => {
     const summary = await requestJson<{
       totals: Record<string, number>;
       rows: Array<{ eventName: string; page: string | null }>;
-    }>(baseUrl, "/api/v1/privacy/analytics/summary?days=1");
+    }>(
+      baseUrl,
+      "/api/v1/privacy/analytics/summary?days=1",
+      config.METRICS_TOKEN
+        ? { headers: { "X-Metrics-Token": config.METRICS_TOKEN } }
+        : undefined,
+    );
     assert.equal(summary.status, 200);
     assert.equal(summary.body.totals.page_view, 1);
     assert.equal(summary.body.totals.run_start, 1);
