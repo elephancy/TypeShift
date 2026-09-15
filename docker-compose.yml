@@ -17,42 +17,5 @@ services:
       timeout: 5s
       retries: 8
 
-  prometheus:
-    profiles: ["ops"]
-    image: prom/prometheus:v2.55.1
-    container_name: typeshift-prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./ops/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  alertmanager:
-    profiles: ["ops"]
-    image: prom/alertmanager:v0.28.0
-    container_name: typeshift-alertmanager
-    restart: unless-stopped
-    ports:
-      - "9093:9093"
-    volumes:
-      - ./ops/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-
-  grafana:
-    profiles: ["ops"]
-    image: grafana/grafana:11.3.0
-    container_name: typeshift-grafana
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./ops/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./ops/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      - prometheus
-
 volumes:
   typeshift_pgdata:

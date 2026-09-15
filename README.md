@@ -130,6 +130,7 @@ The repo includes:
 - `/api/v1/privacy/analytics/summary` is protected by `METRICS_TOKEN` in production
 - `/api/v1/admin/seed-bots` requires an allowlisted admin account plus `BOT_SEED_TOKEN` in production and upserts a capped set of uncertified bot leaderboard rows
 - Workers observability is enabled in `client/wrangler.jsonc`
+- The private centralized `ops` service owns external uptime checks and the shared project dashboard; this repository does not run a separate Prometheus, Alertmanager, or Grafana stack
 - Legal routes are published at `/privacy-policy`, `/cookies`, and `/terms`
 
 ## Word Data
