@@ -42,6 +42,17 @@ test('provider errors cannot echo credentials or raw response text', async () =>
   await assert.rejects(api.request('workers/scripts'), { message: 'Cloudflare HTTP 403; error codes 10000' });
 });
 
+test('Pages inventory uses its supported smaller page size and does not truncate a full page', async () => {
+  let calls = 0;
+  const api = new CloudflareAPI('fixture', account, async url => {
+    assert.equal(new URL(url).searchParams.get('per_page'), '20');
+    calls++;
+    return response(calls === 1 ? Array.from({ length: 20 }, (_, i) => ({ name: `page-${i}` })) : [{ name: 'last' }]);
+  });
+  assert.equal((await api.list('pages/projects')).length, 21);
+  assert.equal(calls, 2);
+});
+
 test('reports partial permissions as a failed inventory instead of an empty healthy account', async () => {
   const api = { list: async path => { if (path === 'pages/projects') throw new Error('Cloudflare HTTP 403; error codes 10000'); return []; } };
   const report = await inventory(api);
