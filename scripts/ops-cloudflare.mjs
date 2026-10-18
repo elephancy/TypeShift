@@ -93,12 +93,14 @@ export class CloudflareAPI {
 
   async list(path) {
     const result = [];
+    // Pages enforces a smaller page-size bound than the Workers APIs.
+    const perPage = path.startsWith('pages/') ? 20 : 100;
     for (let page = 1; page <= 100; page++) {
-      const body = await this.request(`${path}?page=${page}&per_page=100`);
+      const body = await this.request(`${path}?page=${page}&per_page=${perPage}`);
       if (!Array.isArray(body.result)) throw new Error('Cloudflare list response was not an array');
       result.push(...body.result);
       const pages = body.result_info?.total_pages;
-      if (pages ? page >= pages : body.result.length < 100) return result;
+      if (pages ? page >= pages : body.result.length < perPage) return result;
     }
     throw new Error('Cloudflare pagination exceeded the account inventory limit');
   }
