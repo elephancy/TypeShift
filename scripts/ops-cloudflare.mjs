@@ -10,8 +10,9 @@ const DESTINATION = 'ops-logs';
 export function workerSummary(worker, settings = {}) {
   const observability = settings.observability ?? worker.observability ?? {};
   const logs = observability.logs ?? {};
+  const name = worker.id ?? worker.name;
   return {
-    name: worker.id ?? worker.name,
+    name,
     modified_on: worker.modified_on ?? null,
     observability: {
       enabled: observability.enabled === true,
@@ -22,7 +23,7 @@ export function workerSummary(worker, settings = {}) {
       persist: logs.persist ?? null,
     },
     ops_configured: observability.enabled === true && logs.enabled === true
-      && (logs.destinations ?? []).includes(DESTINATION),
+      && (logs.destinations ?? []).some(item => item === DESTINATION || item === `${DESTINATION}-${name}`),
   };
 }
 
@@ -132,7 +133,7 @@ export async function inventory(api) {
 }
 
 async function main() {
-  const api = new CloudflareAPI(process.env.CLOUDFLARE_API_TOKEN, process.env.CLOUDFLARE_ACCOUNT_ID);
+  const api = new CloudflareAPI(process.env.OPS_CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN, process.env.CLOUDFLARE_ACCOUNT_ID);
   const report = await inventory(api);
   console.log(JSON.stringify(report, null, 2));
   if (process.env.GITHUB_STEP_SUMMARY) {
