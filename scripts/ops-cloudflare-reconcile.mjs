@@ -110,6 +110,32 @@ export async function enrollWorker(api, seed, worker, destinations) {
   return { worker: worker.name, ...sourceIdentity(worker.name), configured: true, delivery_verified: false };
 }
 
+export async function awaitHostAcceptance(seed, workers, fetcher = fetch, pause = ms => new Promise(resolve => setTimeout(resolve, ms)), attempts = 12) {
+  // Authenticated OTLP empty exports are no-op protocol probes, not fake logs.
+  // The host returns 200 only once the source-key hash is installed.
+  const pending = new Set(workers.map(worker => worker.name));
+  for (let attempt = 0; attempt < attempts && pending.size; attempt++) {
+    for (const name of [...pending]) {
+      try {
+        const response = await fetcher(INGESTION_URL, {
+          method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
+          headers: { Authorization: `Bearer ${sourceKey(seed, name)}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resourceLogs: [] }),
+        });
+        if (response.status === 200) pending.delete(name);
+        else if (response.status !== 401 && response.status !== 503) {
+          throw new Error(`Ops authenticated probe returned HTTP ${response.status}`);
+        }
+      } catch (error) {
+        if (error.message.startsWith('Ops authenticated probe')) throw error;
+        // Connection failures during a rolling deployment remain retryable.
+      }
+    }
+    if (pending.size && attempt + 1 < attempts) await pause(15_000);
+  }
+  if (pending.size) throw new Error('Ops has not accepted all planned source keys; no export settings were changed');
+}
+
 async function main() {
   const phase = process.argv[2];
   if (!['plan', 'enroll'].includes(phase)) throw new Error('Choose plan or enroll');
@@ -135,6 +161,7 @@ async function main() {
   if (JSON.stringify(publishedManifest) !== JSON.stringify(manifest)) {
     throw new Error('Worker inventory changed since publishing key hashes; wait for the next reconciliation');
   }
+  await awaitHostAcceptance(seed, workers);
   // Destination authentication appears only in outbound HTTPS bodies, never in
   // stdout, artifacts, process arguments, or configuration checked into Git.
   const destinations = await api.list('workers/observability/destinations');

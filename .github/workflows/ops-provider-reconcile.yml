@@ -3,7 +3,7 @@ name: Ops provider reconcile
 on:
   workflow_dispatch:
   schedule:
-    - cron: '37 * * * *'
+    - cron: '7,17,27,37,47,57 * * * *'
   pull_request:
     paths:
       - scripts/ops-cloudflare*.mjs
@@ -40,7 +40,6 @@ jobs:
       OPS_CLOUDFLARE_API_TOKEN: ${{ secrets.OPS_CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       OPS_LOG_INGESTION_SEED: ${{ secrets.OPS_LOG_INGESTION_SEED }}
-      OPS_ARTIFACT_DIR: ${{ runner.temp }}/ops-provider-manifest
     steps:
       - name: Check out reviewed main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -50,6 +49,8 @@ jobs:
         with:
           node-version: 24
       - name: Prepare sanitized inventory and source-key hashes
+        env:
+          OPS_ARTIFACT_DIR: ${{ runner.temp }}/ops-provider-manifest
         run: node scripts/ops-cloudflare-reconcile.mjs plan
       - name: Publish hash manifest for the trusted host reconciler
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -58,5 +59,3 @@ jobs:
           path: ${{ runner.temp }}/ops-provider-manifest/*.json
           if-no-files-found: error
           retention-days: 7
-      - name: Reconcile native Worker export and verify provider readback
-        run: node scripts/ops-cloudflare-reconcile.mjs enroll

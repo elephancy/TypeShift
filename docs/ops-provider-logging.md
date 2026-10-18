@@ -30,7 +30,7 @@ verified. An inventory row or uptime probe does not establish request-log covera
 
 ## Automatic enrollment
 
-`ops-provider-reconcile.yml` runs hourly or manually on reviewed main. It uses
+`ops-provider-reconcile.yml` runs every ten minutes or manually on reviewed main. It uses
 `OPS_CLOUDFLARE_API_TOKEN` when set, otherwise the existing Cloudflare token. The
 token needs Workers script-settings write, Workers Observability write, and Pages
 metadata read access to the owned account. A permission failure stops enrollment.
@@ -50,14 +50,22 @@ digest and bounded contents before accepting those hashes. Existing server keys
 are preserved. Destination credentials remain only in Actions memory and the
 Cloudflare destination configuration.
 
+The separate `ops-provider-enroll.yml` is triggered by a successful plan run, or
+manually with a successful plan run ID. It independently requires that the plan
+was a schedule/manual run from this repository's exact current main SHA before
+checking out code or using provider credentials. It downloads that run's immutable
+artifact and waits up to twelve attempts for authenticated empty OTLP requests to
+return 200 for every source, proving that the host accepted the key hashes. Empty
+exports contain no fake application events. No provider mutation occurs if this
+gate fails. Cloudflare's own destination preflight remains enabled.
+
 The enrollment phase configures `ops-logs-WORKER_NAME` destinations at
 `https://ops.elfeel.me/logs/ingest/v1/logs`, appends them to each Worker's settings,
-and checks provider readback. New Workers are enrolled in the next scheduled run.
+and checks provider readback. New Workers are enrolled after the next scheduled plan.
 An account inventory change between plan and enrollment stops that run so no
 source is enrolled without its matching published hash.
 
-The first export can precede host acceptance of the new manifest. Coverage must
-therefore remain unverified until a real source event reaches Loki after the
+Coverage remains unverified until a real source event reaches Loki after the
 manifest is installed. A PATCH response establishes configuration, not delivery.
 
 The initial CI inventory on October 19, 2026 found seven Workers, including the

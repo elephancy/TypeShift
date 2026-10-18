@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { desiredObservability, EnrollmentAPI, enrollWorker, INGESTION_URL, keyManifest, sourceIdentity, sourceKey } from './ops-cloudflare-reconcile.mjs';
+import { awaitHostAcceptance, desiredObservability, EnrollmentAPI, enrollWorker, INGESTION_URL, keyManifest, sourceIdentity, sourceKey } from './ops-cloudflare-reconcile.mjs';
 
 const seed = 'fixture-seed-never-used-in-production';
 
@@ -67,4 +67,18 @@ test('mutation transport rejects code/deploy/secret operations and sanitizes API
   await assert.rejects(api.mutate('workers/scripts/portfolio', 'PUT', {}), /boundary/);
   await assert.rejects(api.mutate('workers/scripts/portfolio/secrets', 'POST', {}), /boundary/);
   await assert.rejects(api.mutate('workers/observability/destinations', 'POST', {}), { message: 'Cloudflare enrollment HTTP 403; error codes 10000' });
+});
+
+test('waits for host key acceptance with empty OTLP and never sends fake source events', async () => {
+  let calls = 0;
+  const fetcher = async (url, request) => {
+    assert.equal(url, INGESTION_URL);
+    assert.deepEqual(JSON.parse(request.body), { resourceLogs: [] });
+    assert.equal(request.redirect, 'error');
+    return { status: ++calls === 1 ? 401 : 200 };
+  };
+  await awaitHostAcceptance(seed, [{ name: 'portfolio' }], fetcher, async () => {}, 2);
+  assert.equal(calls, 2);
+  await assert.rejects(awaitHostAcceptance(seed, [{ name: 'portfolio' }], async () => ({ status: 401 }), async () => {}, 2), /not accepted/);
+  await assert.rejects(awaitHostAcceptance(seed, [{ name: 'portfolio' }], async () => ({ status: 400 }), async () => {}, 2), /HTTP 400/);
 });
