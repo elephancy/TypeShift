@@ -49,9 +49,6 @@ jobs:
         run: cp client/wrangler.example.jsonc client/wrangler.jsonc
 
       - name: Run tests
-        run: node --test scripts/ops-cloudflare*.test.mjs
-
-      - name: Run application tests
         run: npm run test
 
       - name: Build worker bundle
