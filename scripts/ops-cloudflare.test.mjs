@@ -42,15 +42,21 @@ test('provider errors cannot echo credentials or raw response text', async () =>
   await assert.rejects(api.request('workers/scripts'), { message: 'Cloudflare HTTP 403; error codes 10000' });
 });
 
-test('Pages inventory uses its supported smaller page size and does not truncate a full page', async () => {
+test('Pages inventory uses documented default query then smaller pages without truncating', async () => {
   let calls = 0;
   const api = new CloudflareAPI('fixture', account, async url => {
-    assert.equal(new URL(url).searchParams.get('per_page'), '20');
     calls++;
+    assert.equal(new URL(url).searchParams.get('per_page'), calls === 1 ? null : '20');
     return response(calls === 1 ? Array.from({ length: 20 }, (_, i) => ({ name: `page-${i}` })) : [{ name: 'last' }]);
   });
   assert.equal((await api.list('pages/projects')).length, 21);
   assert.equal(calls, 2);
+});
+
+test('permission diagnostics expose only fixed categories, never provider prose', async () => {
+  const api = new CloudflareAPI('fixture-secret', account, async () => ({ ok: false, status: 400,
+    json: async () => ({ success: false, errors: [{ code: 8000024, message: 'Cannot authenticate user using fixture-secret' }] }) }));
+  await assert.rejects(api.request('pages/projects'), { message: 'Cloudflare HTTP 400; error codes 8000024; categories authenticate,user' });
 });
 
 test('reports partial permissions as a failed inventory instead of an empty healthy account', async () => {

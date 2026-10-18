@@ -86,17 +86,20 @@ export class CloudflareAPI {
     catch { throw new Error(`Cloudflare returned HTTP ${response.status} with an invalid response`); }
     if (!response.ok || body.success !== true) {
       const codes = (body.errors ?? []).map(error => Number(error.code)).filter(Number.isFinite);
-      throw new Error(`Cloudflare HTTP ${response.status}; error codes ${codes.join(',') || 'unknown'}`);
+      const categories = ['authentication', 'authenticate', 'permission', 'scope', 'account', 'project', 'page', 'per_page', 'pagination', 'invalid', 'enabled', 'disabled', 'expired', 'token', 'product', 'user', 'maximum', 'minimum', 'limit', 'access']
+        .filter(word => (body.errors ?? []).some(error => typeof error.message === 'string' && error.message.toLowerCase().includes(word)));
+      // Fixed vocabulary only: provider prose may echo sensitive request context.
+      throw new Error(`Cloudflare HTTP ${response.status}; error codes ${codes.join(',') || 'unknown'}${categories.length ? `; categories ${categories.join(',')}` : ''}`);
     }
     return body;
   }
 
   async list(path) {
     const result = [];
-    // Pages enforces a smaller page-size bound than the Workers APIs.
+    // Start Pages with its documented default query, then follow returned bounds.
     const perPage = path.startsWith('pages/') ? 20 : 100;
     for (let page = 1; page <= 100; page++) {
-      const body = await this.request(`${path}?page=${page}&per_page=${perPage}`);
+      const body = await this.request(path.startsWith('pages/') && page === 1 ? path : `${path}?page=${page}&per_page=${perPage}`);
       if (!Array.isArray(body.result)) throw new Error('Cloudflare list response was not an array');
       result.push(...body.result);
       const pages = body.result_info?.total_pages;
