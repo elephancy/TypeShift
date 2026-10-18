@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const REPOSITORY_URL = "https://github.com/mahmoudelfeelig/typeshit";
+const REPOSITORY_URL = "https://github.com/elephancy/TypeShift";
 
 export default function SiteFooter() {
   return (
