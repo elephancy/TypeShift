@@ -12,7 +12,7 @@
     "prebuild:worker": "npm run clean:worker",
     "build:worker": "opennextjs-cloudflare build --config wrangler.jsonc",
     "predeploy:worker": "npm run clean:worker",
-    "deploy:worker": "opennextjs-cloudflare build --config wrangler.jsonc && opennextjs-cloudflare deploy --config wrangler.jsonc",
+    "deploy:worker": "node ../scripts/ops-deploy.mjs --engine opennext --config wrangler.jsonc",
     "prepreview:worker": "npm run clean:worker",
     "preview:worker": "opennextjs-cloudflare build --config wrangler.jsonc && wrangler dev --config wrangler.jsonc",
     "start": "next start",

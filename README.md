@@ -135,7 +135,7 @@ The repo includes:
 - `.github/workflows/backup.yml` exports SQL backups to the `typeshift-backups` R2 bucket daily
 - `/api/v1/privacy/analytics/summary` is protected by `METRICS_TOKEN` in production
 - `/api/v1/admin/seed-bots` requires an allowlisted admin account plus `BOT_SEED_TOKEN` in production and upserts a capped set of uncertified bot leaderboard rows
-- Workers observability is enabled in `client/wrangler.jsonc`
+- Workers observability and delivery destinations are managed centrally by Ops
 - The private centralized `ops` service owns external uptime checks and the shared project dashboard; this repository does not run a separate Prometheus, Alertmanager, or Grafana stack
 - Legal routes are published at `/privacy-policy`, `/cookies`, and `/terms`
 
@@ -150,3 +150,17 @@ The repo includes:
 - Custom dictionaries stay local-first by design, so guests can use and customize the site without creating an account.
 - Register/login flows require Turnstile in production.
 - Game modes are deep-linkable under `/games/<mode-slug>`, for example `/games/sprint`, `/games/meteor`, and `/games/rhythm-chart`.
+
+### Central Ops deployment policy
+
+Production deployment must use the central entrypoint below. It downloads the
+Ops deployment runner over HTTPS, which applies current Ops-owned observability
+policy to an ephemeral config while preserving application bindings and existing
+log export destinations. If Ops is unavailable or validation fails, deployment
+stops. Direct production `wrangler deploy` and `opennextjs-cloudflare deploy`
+bypass this boundary and must not be used. Local preview and dry-run commands
+remain available. No telemetry settings or Ops credentials belong in this repo.
+
+```bash
+npm run deploy:worker
+```
