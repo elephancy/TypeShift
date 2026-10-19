@@ -216,14 +216,6 @@ jobs:
                 dataset: "typeshift_usage",
               },
             ],
-            observability: baseConfig.observability || {
-              enabled: true,
-              head_sampling_rate: 1,
-              logs: {
-                invocation_logs: true,
-                head_sampling_rate: 1,
-              },
-            },
             r2_buckets: [
               {
                 bucket_name: nextCacheBucket || "typeshift-next-cache",

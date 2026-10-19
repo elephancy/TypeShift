@@ -10,7 +10,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm --prefix client run build:worker",
     "build:client": "npm --prefix client run build:worker",
-    "test": "npm --prefix client run test",
+    "test": "node --test scripts/ops-deploy.test.mjs && npm --prefix client run test",
     "test:e2e": "npx playwright test",
     "preview:worker": "npm --prefix client run preview:worker",
     "deploy:worker": "npm --prefix client run deploy:worker",
