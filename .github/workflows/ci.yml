@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
   contents: read
@@ -46,6 +46,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Check deployment authorization regressions
+        run: |
+          python3 .github/scripts/test_deploy_ci_proof.py
+          node --test .github/scripts/guarded_deploy.test.mjs
 
       - name: Install dependencies
         run: npm ci
