@@ -2,26 +2,27 @@ name: Deploy
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches:
       - main
-      - master
 
 concurrency:
-  group: workflow-${{ github.workflow }}-${{ github.ref }}
+  group: workflow-${{ github.workflow }}-production
   cancel-in-progress: false
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   deploy-cloudflare:
+    if: github.repository == 'elephancy/TypeShift' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_D1_DATABASE_ID: ${{ vars.CF_D1_DATABASE_ID }}
       CF_CACHE_KV_ID: ${{ vars.CF_CACHE_KV_ID }}
       CF_RATE_LIMIT_KV_ID: ${{ vars.CF_RATE_LIMIT_KV_ID }}
@@ -43,16 +44,78 @@ jobs:
       NEXT_PUBLIC_CLOUDFLARE_ONLY: "true"
 
     steps:
+      - name: Authorize deployment source before checkout
+        id: proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          CI_TRIGGER: ${{ toJSON(github.event.workflow_run) }}
+          WORKFLOW_SOURCE_SHA: ${{ github.workflow_sha }}
+        run: |
+          python3 -I - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, runpy, sys, tempfile
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+          repository = os.environ['SOURCE_REPOSITORY']
+          revision = os.environ['WORKFLOW_SOURCE_SHA']
+          if repository != 'elephancy/TypeShift' or not re.fullmatch(r'[a-f0-9]{40}', revision):
+              raise SystemExit('Unexpected deployment policy identity')
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, *args):
+                  raise RuntimeError('Policy source redirect refused')
+          policy_root = pathlib.Path(tempfile.mkdtemp(prefix='typeshift-ci-policy-', dir=os.environ['RUNNER_TEMP']))
+          opener = build_opener(NoRedirect)
+          for filename in ('deploy_ci_proof.py', 'guarded_deploy.mjs'):
+              url = f'https://api.github.com/repos/{repository}/contents/.github/scripts/{filename}?ref={revision}'
+              request = Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
+              with opener.open(request, timeout=20) as response:
+                  data = response.read(2 * 1024 * 1024 + 1)
+                  if response.status != 200 or len(data) > 2 * 1024 * 1024:
+                      raise SystemExit('Deployment policy source is unavailable')
+                  blob = json.loads(data)
+              if blob.get('encoding') != 'base64':
+                  raise SystemExit('Deployment policy encoding is invalid')
+              source = base64.b64decode(blob['content'].replace('\n', ''), validate=True)
+              if not source or len(source) > 128 * 1024 or hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest() != blob.get('sha'):
+                  raise SystemExit('Deployment policy blob is invalid')
+              target = policy_root / filename
+              with target.open('xb') as handle:
+                  handle.write(source)
+              target.chmod(0o600)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'policy_root={policy_root}\n')
+              output.write('wrapper_sha256=' + hashlib.sha256((policy_root / 'guarded_deploy.mjs').read_bytes()).hexdigest() + '\n')
+          sys.argv = [str(policy_root / 'deploy_ci_proof.py'), 'authorize']
+          runpy.run_path(sys.argv[0], run_name='__main__')
+          PY
+
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          ref: ${{ steps.proof.outputs.source_sha }}
+
+      - name: Verify exact checkout
+        env:
+          SOURCE_SHA: ${{ steps.proof.outputs.source_sha }}
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Record trusted Node executable
+        id: node
+        run: echo "binary=$(command -v node)" >> "$GITHUB_OUTPUT"
+
+      - name: Check deployment authorization regressions
+        run: |
+          python3 .github/scripts/test_deploy_ci_proof.py
+          node --test .github/scripts/guarded_deploy.test.mjs
 
       - name: Install dependencies
         run: npm ci
@@ -239,13 +302,62 @@ jobs:
           NODE
 
       - name: Audit dependencies
+        if: steps.proof.outputs.reuse_ci != 'true'
         run: npm audit --audit-level=high
 
       - name: Run tests
+        if: steps.proof.outputs.reuse_ci != 'true'
         run: npm run test
 
-      - name: Apply production D1 schema
-        run: npx wrangler d1 execute typeshift-prod --config client/wrangler.jsonc --remote --file client/cloudflare/d1/migrations/0001_initial.sql --yes
+      - name: Prepare the production worker build
+        run: npm --prefix client run clean:worker
 
-      - name: Deploy to Cloudflare Workers
-        run: npm run deploy:worker
+      - name: Revalidate before production credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          CI_TRIGGER: ${{ toJSON(github.event.workflow_run) }}
+          EXPECTED_PROOF: ${{ steps.proof.outputs.proof }}
+          EXPECTED_HELPER_SHA256: ${{ steps.proof.outputs.helper_sha256 }}
+          CI_POLICY_ROOT: ${{ steps.proof.outputs.policy_root }}
+        run: |
+          /usr/bin/python3 -I - <<'PY'
+          import hashlib, os, pathlib, runpy, sys
+          helper = pathlib.Path(os.environ['CI_POLICY_ROOT']) / 'deploy_ci_proof.py'
+          if hashlib.sha256(helper.read_bytes()).hexdigest() != os.environ['EXPECTED_HELPER_SHA256']:
+              raise SystemExit('Deployment policy changed after checkout')
+          sys.argv = [str(helper), 'revalidate']
+          runpy.run_path(str(helper), run_name='__main__')
+          PY
+
+      - name: Apply D1 schema, build and deploy through guarded central Ops
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+          CI_TRIGGER: ${{ toJSON(github.event.workflow_run) }}
+          EXPECTED_PROOF: ${{ steps.proof.outputs.proof }}
+          EXPECTED_HELPER_SHA256: ${{ steps.proof.outputs.helper_sha256 }}
+          EXPECTED_WRAPPER_SHA256: ${{ steps.proof.outputs.wrapper_sha256 }}
+          CI_POLICY_ROOT: ${{ steps.proof.outputs.policy_root }}
+          TRUSTED_NODE: ${{ steps.node.outputs.binary }}
+          NODE_OPTIONS: ""
+          NODE_PATH: ""
+        run: |
+          /usr/bin/python3 -I - <<'PY'
+          import hashlib, os, pathlib, subprocess
+          wrapper = pathlib.Path(os.environ['CI_POLICY_ROOT']) / 'guarded_deploy.mjs'
+          if hashlib.sha256(wrapper.read_bytes()).hexdigest() != os.environ['EXPECTED_WRAPPER_SHA256']:
+              raise SystemExit('Deployment wrapper changed after checkout')
+          node = os.environ['TRUSTED_NODE']
+          if not pathlib.Path(node).is_absolute():
+              raise SystemExit('Trusted Node executable is missing')
+          subprocess.run([node, str(wrapper)], check=True)
+          PY
