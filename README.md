@@ -100,6 +100,12 @@ BOT_SEED_TOKEN=replace-with-a-private-bot-seed-token
 - `ACCOUNT_TOKEN=... BOT_SEED_TOKEN=... npm run seed:bots -- https://typeshift.elfeel.me`: add/update capped synthetic leaderboard rows
 - `npm run smoke:check -- <url>`: health and challenge smoke test
 
+## Dependency Security
+
+CI and production deployment run `npm audit --audit-level=high` before testing or deploying. Keep the lockfile committed.
+
+The override for `@node-minify/core@9.0.2` replaces its pinned `glob@10.3.3` with the compatible patched `10.5.0` for [GHSA-5j98-mcp5-4vw2](https://github.com/advisories/GHSA-5j98-mcp5-4vw2). It is scoped to this minifier version and can be removed once OpenNext no longer pulls that vulnerable pin. The supported Next/OpenNext/Wrangler versions now resolve patched sharp directly, without the old global sharp pin.
+
 ## Deployment Notes
 
 The Cloudflare Worker build remains the primary production target:

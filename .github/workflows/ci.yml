@@ -53,6 +53,9 @@ jobs:
       - name: Create CI Wrangler config
         run: cp client/wrangler.example.jsonc client/wrangler.jsonc
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Run tests
         run: npm run test
 

@@ -246,6 +246,9 @@ jobs:
           fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
           NODE
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Run tests
         run: npm run test
 
