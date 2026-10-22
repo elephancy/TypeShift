@@ -19,7 +19,8 @@
     "restore:drill": "bash ./scripts/restore-drill.sh",
     "seed:bots": "node scripts/seed-bots.mjs",
     "smoke:check": "bash ./scripts/smoke-check.sh",
-    "start": "node scripts/start.mjs"
+    "start": "node scripts/start.mjs",
+    "test:coverage": "node --test scripts/ops-deploy.test.mjs && npm --prefix client run test:coverage"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.12"

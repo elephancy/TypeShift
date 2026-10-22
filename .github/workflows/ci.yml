@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   test-and-build:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -62,7 +64,24 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Run tests
-        run: npm run test
+        run: npm run test:coverage
+      - name: Preserve typeshift-client coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-typeshift-client
+          path: client/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload typeshift-client coverage to Codecov
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CODECOV_UPLOAD_ENABLED == 'true'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          use_oidc: false
+          files: ./client/coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
+          version: v11.3.1
+          cleanup: true
 
       - name: Build worker bundle
         run: npm run build
