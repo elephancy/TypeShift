@@ -17,7 +17,8 @@
     "preview:worker": "opennextjs-cloudflare build --config wrangler.jsonc && wrangler dev --config wrangler.jsonc",
     "start": "next start",
     "test": "node --require ../scripts/register-geteuid.cjs --import tsx --test \"src/**/*.test.ts\" && tsc -p tsconfig.json --noEmit",
-    "preview": "next start"
+    "preview": "next start",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage',{recursive:true})\" && node --require ../scripts/register-geteuid.cjs --import tsx --test --experimental-test-coverage --test-reporter=spec --test-reporter=lcov --test-reporter-destination=stdout --test-reporter-destination=coverage/lcov.info \"src/**/*.test.ts\" && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "next": "^16.4.2",
