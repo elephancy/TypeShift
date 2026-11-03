@@ -20,7 +20,7 @@
     "NEXT_PUBLIC_SITE_URL": "https://typeshift.example.com",
     "NEXT_PUBLIC_CONTROLLER_NAME": "TypeShift",
     "NEXT_PUBLIC_CONTACT_EMAIL": "privacy@example.com",
-    "NEXT_PUBLIC_CONTACT_ADDRESS": "Berlin, Germany",
+    "NEXT_PUBLIC_CONTACT_ADDRESS": "Germany",
     "NEXT_PUBLIC_SUPPORT_EMAIL": "support@example.com",
     "NEXT_PUBLIC_DPO_EMAIL": "",
     "NEXT_PUBLIC_LEGAL_LAST_UPDATED": "March 8, 2026",

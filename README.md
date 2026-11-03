@@ -2,6 +2,8 @@
 
 TypeShift is a Cloudflare-first typing game built on Next.js 16 and React 19. The published runtime is the `client/` app deployed to Cloudflare Workers via OpenNext, with D1 for core relational data, R2 for cache/backups, Turnstile for auth abuse protection, and Workers observability for logs and metrics.
 
+Play the public game at [typeshift.elfeel.me](https://typeshift.elfeel.me/).
+
 ## Current Launch Scope
 
 Shipped for the Cloudflare launch:
@@ -70,7 +72,7 @@ NEXT_PUBLIC_SITE_NAME=TypeShift Station
 NEXT_PUBLIC_SITE_URL=https://typeshift.dev
 NEXT_PUBLIC_CONTROLLER_NAME=TypeShift Station Demo Operator
 NEXT_PUBLIC_CONTACT_EMAIL=privacy@typeshift.dev
-NEXT_PUBLIC_CONTACT_ADDRESS=Berlin, Germany
+NEXT_PUBLIC_CONTACT_ADDRESS=Germany
 NEXT_PUBLIC_SUPPORT_EMAIL=support@typeshift.dev
 NEXT_PUBLIC_DPO_EMAIL=
 NEXT_PUBLIC_LEGAL_LAST_UPDATED=March 8, 2026
