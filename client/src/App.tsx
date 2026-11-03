@@ -5015,8 +5015,8 @@ export default function App() {
         {appRoute === "play" && !showArena && (
           <section className="games-library" aria-labelledby="games-title">
             <div className="games-library-head">
-              <h1 id="games-title">Games</h1>
-              <p>Choose a mode. Each game opens in its own focused play space.</p>
+              <h1 id="games-title">Typing games</h1>
+              <p>Choose a typing game or practice mode. Each opens in its own focused play space.</p>
             </div>
             <div className="games-grid">
               {playModeCards.map((entry) => (
@@ -5989,10 +5989,9 @@ export default function App() {
               <div className="home-hero-grid">
                 <div>
                   <p className="home-eyebrow">Typing platform</p>
-                  <h2>Fast drills, weird modes, and a front page that finally feels sorted out.</h2>
+                  <h2>Typing practice with fast drills and creative game modes.</h2>
               <p>
-                Home stays calm. Play is now the one place where you pick a mode and launch it, while boards,
-                lab, profile, and settings keep their own pages.
+                Build speed and accuracy with timed runs, explore the game library, and track your progress on the boards and in the training lab.
               </p>
                   <div className="hero-pill-row">
                     <span className="hero-pill">{GAME_MODES.length} modes</span>

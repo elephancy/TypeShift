@@ -4,9 +4,10 @@ import "../src/styles.css";
 import { fontAccessible, fontBody, fontDisplay, fontUi } from "../src/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "TypeShift Station",
+  metadataBase: new URL("https://typeshift.elfeel.me"),
+  title: "TypeShift | Typing Games and Practice",
   description:
-    "Creative typing game with replays, privacy controls, accessibility options, local custom dictionaries, and secure leaderboards.",
+    "Practice typing with timed drills, creative game modes, replays and leaderboards. Explore TypeShift's typing arcade and training tools.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

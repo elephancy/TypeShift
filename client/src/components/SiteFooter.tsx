@@ -10,7 +10,7 @@ export default function SiteFooter() {
         <Link href="/privacy-policy">Privacy Policy</Link>
         <Link href="/cookies">Cookies</Link>
         <Link href="/" className="footer-icon-link" aria-label="TypeShift home" title="TypeShift home">
-          <img src="/logo.png" alt="" width={30} height={30} aria-hidden="true" />
+          <img src="/favicon.ico" alt="" width={30} height={30} aria-hidden="true" />
         </Link>
         <a
           href={REPOSITORY_URL}
