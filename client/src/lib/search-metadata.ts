@@ -12,6 +12,26 @@ export function searchMetadata(slug: string[]): Metadata {
       alternates: { canonical: "/boards" },
     };
   }
+  if (slug.length === 1 && slug[0] === "lab") {
+    return {
+      title: "Typing Training Lab | TypeShift",
+      description: "Build a custom typing dictionary, review local replay runs, and explore key and finger heatmaps in TypeShift's training lab.",
+      alternates: { canonical: "/lab" },
+    };
+  }
+  if (slug.length === 1 && slug[0] === "social") {
+    return {
+      title: "Typing Races and Tournaments | TypeShift",
+      description: "Create or join a multiplayer typing race and organize a typing tournament from TypeShift's social hub.",
+      alternates: { canonical: "/social" },
+    };
+  }
+  if (slug.length === 1 && ["settings", "privacy"].includes(slug[0] ?? "")) {
+    return {
+      title: slug[0] === "settings" ? "Settings | TypeShift" : "Privacy Controls | TypeShift",
+      robots: { index: false, follow: true },
+    };
+  }
   if (slug[0] === "profile") {
     return { title: slug[1] === "account" ? "Account | TypeShift" : "Profile | TypeShift", robots: { index: false, follow: true } };
   }
