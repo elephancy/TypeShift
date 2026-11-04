@@ -25,6 +25,11 @@ test("private account surfaces are excluded and the game index aliases agree", (
   assert.equal(searchMetadata(["home"]).alternates?.canonical, "/");
   assert.equal(searchMetadata(["boards"]).alternates?.canonical, "/boards");
   assert.equal(searchMetadata(["boards"]).title, "Typing Game Leaderboards | TypeShift");
+  for (const page of ["settings", "privacy"]) {
+    assert.deepEqual(searchMetadata([page]).robots, { index: false, follow: true });
+    assert.equal(searchMetadata([page]).alternates, undefined);
+    assert.ok(!sitemap().some((entry) => entry.url === `https://typeshift.elfeel.me/${page}`));
+  }
   assert.deepEqual(searchMetadata(["profile"]).robots, { index: false, follow: true });
   for (const page of ["account", "security", "data", "friends", "duels", "replays", "webhooks", "admin", "sharing"]) {
     assert.deepEqual(searchMetadata(["profile", page]).robots, { index: false, follow: true });
@@ -33,4 +38,13 @@ test("private account surfaces are excluded and the game index aliases agree", (
     assert.equal(searchMetadata([page]).alternates?.canonical, "/games");
   }
   assert.deepEqual(searchMetadata(["games", "unrecognized"]), {});
+});
+
+test("public training and social tools have matching canonical discovery URLs", () => {
+  for (const [page, title] of [["lab", "Typing Training Lab | TypeShift"], ["social", "Typing Races and Tournaments | TypeShift"]] as const) {
+    const metadata = searchMetadata([page]);
+    assert.equal(metadata.title, title);
+    assert.equal(metadata.alternates?.canonical, `/${page}`);
+    assert.ok(sitemap().some((entry) => entry.url === `https://typeshift.elfeel.me/${page}`));
+  }
 });

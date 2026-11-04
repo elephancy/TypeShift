@@ -7,6 +7,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${site}/` },
     { url: `${site}/games` },
     { url: `${site}/boards` },
+    { url: `${site}/lab` },
+    { url: `${site}/social` },
     ...GAME_MODES.map((mode) => ({ url: `${site}/games/${MODE_META[mode].slug}` })),
   ];
 }
