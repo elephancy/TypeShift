@@ -23,10 +23,10 @@
     "test:coverage": "node --test scripts/ops-deploy.test.mjs && npm --prefix client run test:coverage"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.20.12"
+    "@opennextjs/cloudflare": "^1.20.15"
   },
   "devDependencies": {
-    "wrangler": "^4.151.1"
+    "wrangler": "^4.156.0"
   },
   "overrides": {
     "postcss": "8.5.28",
