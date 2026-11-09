@@ -3378,9 +3378,11 @@ body,
   font-weight: 700;
 }
 
-.game-runtime-bar > strong {
+.game-runtime-bar > h1 {
+  margin: 0;
   font-family: var(--font-display), sans-serif;
   font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .adaptive-music-readout {
