@@ -5360,7 +5360,7 @@ export default function App() {
           >
           <div className="game-runtime-bar">
             <Link href="/games" className="game-back-link" aria-label="Back to Games">← <span>Games</span></Link>
-            <strong>{MODE_META[mode].label}</strong>
+            <h1 aria-label={`${MODE_META[mode].label} typing game`}>{MODE_META[mode].label}</h1>
             <span className="adaptive-music-readout" aria-label={`Adaptive music ${adaptiveMusicRef.current.bpm} beats per minute`}>
               <i aria-hidden="true" /> Adaptive music · {adaptiveMusicRef.current.bpm} BPM
             </span>
